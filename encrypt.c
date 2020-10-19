@@ -113,14 +113,21 @@ void AddRoundKey(unsigned char* state, unsigned char* roundKey)
 
 }
 
+void messageToState(unsigned char* message, unsigned char* state){
+	for(int i = 0; i < 16; i+=2){
+		state[i] = message[i] >> 4;
+		state[i+1] = message[i]%4;
+	}
+}
+
 void encrypt(unsigned char* message, unsigned char* key)
 {
 	unsigned char state[16];
-	for(int i = 0; i < 16; i++)
-		state[i] = message[i];
-	
+	// for(int i = 0; i < 16; i++)
+	// 	state[i] = message[i];
+	messageToState(message, state);
 	int numOfRounds = 9;
-	InitialRound(state, key);//Add Round Key
+	AddRoundKey(state, key);//Add Round Key
 	
 	for(int i = 0; i < numOfRounds; i++)
 	{
@@ -131,7 +138,7 @@ void encrypt(unsigned char* message, unsigned char* key)
 	}
 	
 	//Final Round
-	SubBytes(state);
+	SubCell(state);
 	ShiftRows(state);
 	AddRoundKey(state, key);
 
@@ -141,32 +148,90 @@ void encrypt(unsigned char* message, unsigned char* key)
 	
 }
 
+void keySchedule(unsigned char key[11][16], unsigned char* Inputkey, unsigned char* bitwiseKey){
+	int idx = 0, idx1 = 0, idx2 = 64;
+	// for(int i = 0; i < 16; i++){
+	// 	printf("%c ", Inputkey[i]);
+	// }
+	// printf("\n");
+	for(int i = 0; i < 16; i++){
+		for(int j = 7; j >= 0; j--){
+			if((Inputkey[i]&(1 << j)) > 0)
+				bitwiseKey[idx] = 1;
+			else
+				bitwiseKey[idx] = 0;
+			idx++;
+		}
+	}
+	// printf("key: ");
+	// for(int i = 0; i < 128; i++){
+	// 	printf("%d %d\n", i, bitwiseKey[i]);
+	// }
+	// printf("\n");
+	int powe2[4] = {1, 2, 4, 8};
+	for(int round = 0; round < 11; round++){
+		if(round%2 == 0){
+			idx1 = 0 + (round/2)*5;
+			for(int j = 0; j < 16; j++){
+				// key[round][j] = bitwiseKey[idx1]*8 + bitwiseKey[idx1+1]*4 + bitwiseKey[idx1+2]*2 + bitwiseKey[idx1+3];
+				key[round][j] = 0;
+				for(int k = 3; k >= 0; k--){
+					key[round][j] += bitwiseKey[idx1]*powe2[k];
+					idx1++;
+					idx1 %= 64;
+				}
+			}
+		}else{
+			idx2 = 64 + ((round-1)/2)*5;
+			for(int j = 0; j < 16; j++){
+				//key[round][j] = bitwiseKey[idx2]*8 + bitwiseKey[idx2+1]*4 + bitwiseKey[idx2+2]*2 + bitwiseKey[idx2+3];
+				key[round][j] = 0;
+				for(int k = 3; k >= 0; k--){
+					key[round][j] += bitwiseKey[idx2]*powe2[k];
+					idx2++;
+					idx2 %= 128;
+					if(idx2 == 0)idx2 = 64;
+				}
+			}
+		}
+	}
+	for(int i = 0; i < 11; i++){
+		printf("Round %d ", i);
+		for(int j = 0; j < 16; j++){
+			printf("%d ", key[i][j]);
+		}
+		printf("\n");
+	}
+}
+
 int main()
 {
 	unsigned char message[] = "This is a message we will encryt with AES";
-	unsigned char key[16] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
-	encrypt(message, key);
+	unsigned char Inputkey[16] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
+	unsigned char key[11][16], bitwiseKey[128];
+	keySchedule(key, Inputkey, bitwiseKey);
+	//encrypt(message, key);
 
-	int originalLen = strlen((const char*)meassage);
-	int lenOfPaddedMessage = originalLen;
+	// int originalLen = strlen((const char*)message);
+	// int lenOfPaddedMessage = originalLen;
 
-	if(lenOfPaddedMessage%16 != 0)
-		lenOfPaddedMessage = (lenOfPaddedMessage/16 + 1)*16;
+	// if(lenOfPaddedMessage%16 != 0)
+	// 	lenOfPaddedMessage = (lenOfPaddedMessage/16 + 1)*16;
 	
-	unsigned char* paddedMessage = new unsigned char[lenOfPaddedMessage];
+	// unsigned char* paddedMessage = new unsigned char[lenOfPaddedMessage];
 	
-	for(int i = 0; i < lenOfPaddedMessage; i++)
-	{
-		if(i >= originalLen)
-			paddedMessage[i] = 0;
+	// for(int i = 0; i < lenOfPaddedMessage; i++)
+	// {
+	// 	if(i >= originalLen)
+	// 		paddedMessage[i] = 0;
 		
-		else
-			paddedMessage[i] = message[i];
-	}
+	// 	else
+	// 		paddedMessage[i] = message[i];
+	// }
 
-	//Encrypt padded Message
-	for(int i = 0; i < lenOfPaddedMessage; i++)
-		encrypt(paddedMessage + i, key);
+	// //Encrypt padded Message
+	// for(int i = 0; i < lenOfPaddedMessage; i+=8)
+	// 	encrypt(paddedMessage + i, key);
 
 	return 0;
 }
