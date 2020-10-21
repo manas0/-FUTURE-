@@ -16,7 +16,7 @@ unsigned char gmult(unsigned char a, unsigned char b)
             p ^= a; /* since we're in GF(2^m), addition is an XOR */
         
         if (a & 0x80) /* GF modulo: if a >= 128, then it will overflow when shifted left, so reduce */
-            a = (a << 1) ^ 0x13; /* XOR with the primitive polynomial x^4 + x + 1 (0b_0001_011) – you can change it but it must be irreducible */
+            a = (a << 1) ^ 0x13; /* XOR with the primitive polynomial x^4 + x + 1 (0b_0001_011) */
         else
             a <<= 1; /* equivalent to a*2 */
         
@@ -24,16 +24,6 @@ unsigned char gmult(unsigned char a, unsigned char b)
 	}
 
 	return p;
-}
-
-void KeyExpansion()
-{
-
-}
-
-void InitialRound()
-{
-
 }
 
 void SubCell(unsigned char* state)
@@ -47,8 +37,8 @@ void SubCell(unsigned char* state)
 	for(int i = 0; i < 16; i++)
 		state[i] = s_box[state[i]];
 	
-	for(int i = 0; i < 16; i++)
-		printf("%d\n", state[i]);
+	// for(int i = 0; i < 16; i++)
+	// 	printf("%d\n", state[i]);
 
 }
 
@@ -79,32 +69,30 @@ void MixColumn(unsigned char* state)
 
 }
 
-
 void ShiftRows(unsigned char* state)
-{
+{	
 	unsigned char tmp[16];
-	
+
 	tmp[0] = state[0];
-	tmp[1] = state[5];
+	tmp[1] = state[13];
 	tmp[2] = state[10];
-	tmp[3] = state[15];
+	tmp[3] = state[7];
 	tmp[4] = state[4];
-	tmp[5] = state[9];
+	tmp[5] = state[1];
 	tmp[6] = state[14];
-	tmp[7] = state[3];
+	tmp[7] = state[11];
 	tmp[8] = state[8];
-	tmp[9] = state[13];
+	tmp[9] = state[5];
 	tmp[10] = state[2];
-	tmp[11] = state[7];
+	tmp[11] = state[15];
 	tmp[12] = state[12];
-	tmp[13] = state[1];
+	tmp[13] = state[9];
 	tmp[14] = state[6];
-	tmp[15] = state[11];
+	tmp[15] = state[3];
 	
 	for(int i = 0; i < 16; i++)
 		state[i] = tmp[i];
 }
-
 
 void AddRoundKey(unsigned char* state, unsigned char* roundKey)
 {
@@ -114,37 +102,39 @@ void AddRoundKey(unsigned char* state, unsigned char* roundKey)
 }
 
 void messageToState(unsigned char* message, unsigned char* state){
-	for(int i = 0; i < 16; i+=2){
-		state[i] = message[i] >> 4;
-		state[i+1] = message[i]%4;
+	for(int i = 0; i < 8; i++){
+		state[2*i] = message[i]%4;
+		state[2*i+1] = message[i]>>4;
 	}
 }
 
-void encrypt(unsigned char* message, unsigned char* key)
+void encrypt(unsigned char* message, unsigned char key[11][16])
 {
 	unsigned char state[16];
 	// for(int i = 0; i < 16; i++)
 	// 	state[i] = message[i];
 	messageToState(message, state);
 	int numOfRounds = 9;
-	AddRoundKey(state, key);//Add Round Key
+	AddRoundKey(state, key[0]);//Add Round Key
 	
 	for(int i = 0; i < numOfRounds; i++)
 	{
 		SubCell(state);
 		MixColumn(state);
 		ShiftRows(state);
-		AddRoundKey(state, key);
+		AddRoundKey(state, key[i+1]);
 	}
 	
 	//Final Round
 	SubCell(state);
 	ShiftRows(state);
-	AddRoundKey(state, key);
+	AddRoundKey(state, key[10]);
 
 	//EncryptedMessage
-	for(int i = 0; i < 16; i++)
-		message[i] = state[i];
+	for(int i = 0; i < 8; i++)
+	{
+		message[i] = state[2*i+1]<<4 + state[2*i];
+	}
 	
 }
 
@@ -206,11 +196,11 @@ void keySchedule(unsigned char key[11][16], unsigned char* Inputkey, unsigned ch
 
 int main()
 {
-	unsigned char message[] = "This is a message we will encryt with AES";
+	unsigned char message[] = "Hi there";
 	unsigned char Inputkey[16] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
 	unsigned char key[11][16], bitwiseKey[128];
 	keySchedule(key, Inputkey, bitwiseKey);
-	//encrypt(message, key);
+	encrypt(message, key);
 
 	// int originalLen = strlen((const char*)message);
 	// int lenOfPaddedMessage = originalLen;
@@ -232,6 +222,10 @@ int main()
 	// //Encrypt padded Message
 	// for(int i = 0; i < lenOfPaddedMessage; i+=8)
 	// 	encrypt(paddedMessage + i, key);
+
+	printf("\n\n");
+	for(int i = 0 ; i<8 ; i++)
+		printf("%u\n",message[i]);
 
 	return 0;
 }
