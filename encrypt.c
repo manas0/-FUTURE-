@@ -15,7 +15,7 @@ unsigned char gmult(unsigned char a, unsigned char b)
     	if (b & 1) /* if b is odd, then add the corresponding a to p (final product = sum of all a's corresponding to odd b's) */
             p ^= a; /* since we're in GF(2^m), addition is an XOR */
         
-        if (a & 0x80) /* GF modulo: if a >= 128, then it will overflow when shifted left, so reduce */
+        if (a & 0x08) /* GF modulo: if a >= 8, then it will overflow when shifted left, so reduce */
             a = (a << 1) ^ 0x13; /* XOR with the primitive polynomial x^4 + x + 1 (0b_0001_011) */
         else
             a <<= 1; /* equivalent to a*2 */
@@ -103,14 +103,14 @@ void AddRoundKey(unsigned char* state, unsigned char* roundKey)
 
 void messageToState(unsigned char* message, unsigned char* state){
 	for(int i = 0; i < 8; i++){
-		state[2*i] = message[i]%4;
+		state[2*i] = message[i]%16;
 		state[2*i+1] = message[i]>>4;
 	}
 }
 
 void encrypt(unsigned char* message, unsigned char key[11][16])
 {
-	unsigned char state[16];
+	unsigned char state[16] = {0};
 	// for(int i = 0; i < 16; i++)
 	// 	state[i] = message[i];
 	messageToState(message, state);
@@ -133,7 +133,7 @@ void encrypt(unsigned char* message, unsigned char key[11][16])
 	//EncryptedMessage
 	for(int i = 0; i < 8; i++)
 	{
-		message[i] = state[2*i+1]<<4 + state[2*i];
+		message[i] = state[2*i+1]<<4 ^ state[2*i];
 	}
 	
 }
@@ -196,7 +196,7 @@ void keySchedule(unsigned char key[11][16], unsigned char* Inputkey, unsigned ch
 
 int main()
 {
-	unsigned char message[] = "Hi there";
+	unsigned char message[] = {'H' , 'i', ' ' , 't' , 'h' , 'e' , 'r' , 'e'};
 	unsigned char Inputkey[16] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
 	unsigned char key[11][16], bitwiseKey[128];
 	keySchedule(key, Inputkey, bitwiseKey);
