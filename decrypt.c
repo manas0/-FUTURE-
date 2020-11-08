@@ -104,8 +104,8 @@ void AddRoundKey(unsigned char* state, unsigned char* roundKey)
 
 void messageToState(unsigned char* message, unsigned char* state){
 	for(int i = 0; i < 8; i++){
-		state[2*i] = message[i] % 16;
-		state[2*i+1] = message[i] >> 4;
+		state[2*i] = message[i] >> 4;
+		state[2*i+1] = message[i] % 16;
 	}
 }
 
@@ -136,7 +136,7 @@ void decrypt(unsigned char* message, unsigned char key[11][16])
 	//EncryptedMessage
 	for(int i = 0; i < 8; i++)
 	{
-		message[i] = state[2*i+1]<<4 ^ state[2*i];
+		message[i] = (state[2*i]<<4) | state[2*i + 1];
 	}
 	
 }
@@ -199,10 +199,9 @@ void keySchedule(unsigned char key[11][16], unsigned char* Inputkey, unsigned ch
 
 int main()
 {
-	unsigned char message[] = {246 , 100 , 195, 190 , 124, 88 , 154 , 57 };
+	unsigned char message[] = {0x53 , 0x50 , 0xa1 , 0x46 , 0xfc, 0xe7 , 0xde , 0x3e };
+	unsigned char Inputkey[16] = {0 , 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
 
-
-	unsigned char Inputkey[16] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
 	unsigned char key[11][16], bitwiseKey[128];
 	keySchedule(key, Inputkey, bitwiseKey);
 	decrypt(message, key);
