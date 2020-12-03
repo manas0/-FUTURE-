@@ -5,14 +5,15 @@
 unsigned char gmult(unsigned char a, unsigned char b)
 {
 	unsigned char p = 0; /* the product of the multiplication */
-	if(a>0x13)
+	if(a>0x13){
 		a = a^0x13;
+	}
 	
-	if(b>0x13)
+	if(b>0x13){
 		b = b^0x13;
+	}
 
-	while (a && b) 
-	{
+	while (a && b) {
     	if (b & 1) /* if b is odd, then add the corresponding a to p (final product = sum of all a's corresponding to odd b's) */
             p ^= a; /* since we're in GF(2^m), addition is an XOR */
         
@@ -35,12 +36,9 @@ void SubCell(unsigned char* state)
 								0x09 , 0x0a , 0x0c , 0x06 , 
 								0x0f , 0x05 , 0x08 , 0x0b };
 
-	for(int i = 0; i < 16; i++)
+	for(int i = 0; i < 16; i++){
 		state[i] = s_box[state[i]];
-	
-	// for(int i = 0; i < 16; i++)
-	// 	printf("%d\n", state[i]);@
-
+	}
 }
 
 void MixColumn(unsigned char* state)
@@ -53,21 +51,17 @@ void MixColumn(unsigned char* state)
 
 	unsigned char temp[16] = { 0x00 } ;
 
-	for(int i = 0 ; i < 16 ; i += 4)
-	{
-		for(int j = 0; j < 4 ; j++)
-		{
-			for(int k = 0; k < 4 ; k++)
-			{
+	for(int i = 0 ; i < 16 ; i += 4){
+		for(int j = 0; j < 4 ; j++){
+			for(int k = 0; k < 4 ; k++){
 				temp[i+j] ^= gmult(M[j][k],state[i+k]);
 			} 
 		}
 	}
 
-	for(int i  = 0 ; i < 16 ; i++)
+	for(int i  = 0 ; i < 16 ; i++){
 		state[i] = temp[i];
- 
-
+	}
 }
 
 void ShiftRows(unsigned char* state)
@@ -95,11 +89,32 @@ void ShiftRows(unsigned char* state)
 		state[i] = tmp[i];
 }
 
+void Not(unsigned char* state, int roundNum){
+	int bitPos = 3;
+	if(roundNum == 1 || roundNum == 5){
+		bitPos = 2; //MSB = 1
+	}else if(roundNum == 2 || roundNum == 6){
+		bitPos = 1; //MSB = 2
+	}else if(roundNum == 3 || roundNum == 7){
+		bitPos = 0; //MSB = 3
+	}else{
+		bitPos = 3;
+	}
+	for(int i = 0; i < 16; i++){
+		int newState = state[i];
+		if(bitPos != 3){
+			int bit = (newState&(1<<bitPos));
+			newState = (bit == 0 ? newState + (1<<bitPos) : newState - (1<<bitPos));
+		}
+		state[i] = newState;
+	}
+} 
+
 void AddRoundKey(unsigned char* state, unsigned char* roundKey)
 {
-	for(int i = 0; i < 16; i++)
+	for(int i = 0; i < 16; i++){
 		state[i] ^= roundKey[i];
-
+	}
 }
 
 void messageToState(unsigned char* message, unsigned char* state){
@@ -112,8 +127,6 @@ void messageToState(unsigned char* message, unsigned char* state){
 void encrypt(unsigned char* message, unsigned char key[11][16])
 {
 	unsigned char state[16] = {0};
-	// for(int i = 0; i < 16; i++)
-	// 	state[i] = message[i];
 	messageToState(message, state);
 	int numOfRounds = 9;
 	AddRoundKey(state, key[0]);//Add Round Key
@@ -123,6 +136,7 @@ void encrypt(unsigned char* message, unsigned char key[11][16])
 		SubCell(state);
 		MixColumn(state);
 		ShiftRows(state);
+		Not(state, i);
 		AddRoundKey(state, key[i+1]);
 	}
 	
@@ -132,11 +146,9 @@ void encrypt(unsigned char* message, unsigned char key[11][16])
 	AddRoundKey(state, key[10]);
 
 	//EncryptedMessage
-	for(int i = 0; i < 8; i++)
-	{
+	for(int i = 0; i < 8; i++){
 		message[i] = (state[2*i]<<4) | state[2*i + 1];
 	}
-	
 }
 
 void keySchedule(unsigned char key[11][16], unsigned char* Inputkey, unsigned char* bitwiseKey){
@@ -155,7 +167,6 @@ void keySchedule(unsigned char key[11][16], unsigned char* Inputkey, unsigned ch
 		if(round%2 == 0){
 			idx1 = 0 + (round/2)*5;
 			for(int j = 0; j < 16; j++){
-				// key[round][j] = bitwiseKey[idx1]*8 + bitwiseKey[idx1+1]*4 + bitwiseKey[idx1+2]*2 + bitwiseKey[idx1+3];
 				key[round][j] = 0;
 				for(int k = 3; k >= 0; k--){
 					key[round][j] += bitwiseKey[idx1]*powe2[k];
@@ -166,7 +177,6 @@ void keySchedule(unsigned char key[11][16], unsigned char* Inputkey, unsigned ch
 		}else{
 			idx2 = 64 + ((round-1)/2)*5;
 			for(int j = 0; j < 16; j++){
-				//key[round][j] = bitwiseKey[idx2]*8 + bitwiseKey[idx2+1]*4 + bitwiseKey[idx2+2]*2 + bitwiseKey[idx2+3];
 				key[round][j] = 0;
 				for(int k = 3; k >= 0; k--){
 					key[round][j] += bitwiseKey[idx2]*powe2[k];
@@ -193,7 +203,7 @@ int main()
 	FILE *fptr;
 	FILE *f;
     fptr = fopen("output.txt","w");
-    f = fopen("inpgb.txt","r");
+    f = fopen("input.txt","r");
 	unsigned char Inputkey[16] = {0 , 1 , 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
 	unsigned char key[11][16], bitwiseKey[128];
 	keySchedule(key, Inputkey, bitwiseKey);
